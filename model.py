@@ -1,117 +1,139 @@
 import pymongo
 
-class Model(object):
+"""Models data from a MongoDB
 
-  """Initalize the Model
+This class is a self-training assignment in Python and for use in a course
+dealing with MongoDB. This class will allow for the creation of easy to use
+objects to interact with data stored in a MongoDB server.
 
-  Initialize data on the object, also builds the DB connection information
-  for the model. The model __init__ accepts a named collection and db parameters
-  to specify where the data is stored in the database.
-  """
-  def __init__(self, data = {}, collection = "trashbin", db = "test", host = "localhost", safe_conn = False):
-    self.__conn__ = pymongo.Connection("mongodb://%s" % host, safe = safe_conn)
-    self.__db__ = self.__conn__[db]
-    self.__collection__ = self.__db__[collection]
-    self.new = True
-    self.__data__ = data
-    self.loaded = False
-    self.modified = False
+"""
 
-  """Load Model data from the Database based on Query
+class BasicModel(object):
+    """Models data from a MongoDB
 
-  Load data into this Model from a pre-existing record in the Database. This method
-  returns a boolean value representing it's succes, also found on model.loaded.
+    This class is a self-training assignment in Python and for use in a course
+    dealing with MongoDB. This class will allow for the creation of easy to use
+    objects to interact with data stored in a MongoDB server.
 
-  If this Model has already been loaded (model.loaded == True), then the optional
-  named parameter "override" is required to reload this Model with new data otherwise
-  an AlreadyLoadedException will be raised.
-  """
-  def load(self, query, override = False):
-    if self.loaded and not override:
-      raise AlreadyLoadedException
-    if not self.__collection__:
-      return False
-    document = self.__collection__.find_one(query)
-    if document:
-      self.__data__ = document
-      self.loaded = True
-      self.new = False
-    return self.loaded
+    """
 
-  """Inserts or Updates a record based on whether or not it's a new Model
+    def __init__(self, data={}, collection="trashbin", db="test", 
+                 host="localhost", safe_conn=False):
+        """Initalize the Model
 
-  This method will insert or update, dependiong on whether this is a new
-  model or a pre-existing model. This method will also only save if data
-  has been changed.
-  """
-  def save(self):
-    if not self.modified or not self.__collection__:
-      return
-    if self.new:
-      self.__collection__.insert(self.__data__)
-      self.new = False
-    else:
-      self.__collection__.update({ "_id": self.get("_id") }, self.__data__)
-    self.modified = False
+        Initialize data on the object, also builds the DB connection information
+        for the model. The model __init__ accepts a named collection and db 
+        parameters to specify where the data is stored in the database.
+        
+        """
+        self._conn = pymongo.Connection("mongodb://%s" % host, safe=safe_conn)
+        self._db = self._conn[db]
+        self._collection = self._db[collection]
+        self._data = data
+        self.new = True
+        self.loaded = False
+        self.modified = False
 
-  """Set properties, via a dict or prop, value, arguments
+    def load(self, query, override=False):
+        """Load Model data from the Database based on the given query.
 
-  This is the perferred method for altering Data on the Model as it plugs
-  into some higher level features like "model.modifed"
-  """
-  def set(self, newProps, value = None):
-    if value: # Assume newProps is string
-      self.__data__[newProps] = value
-      self.modified = True
-    else: # It better be a dict
-      for key in newProps:
-        self.__data__[key] = newProps[key]
-        self.modified = True
+        Load data into this Model from a pre-existing record in the Database. This
+        method returns a boolean value representing it's succes, also found on 
+        model.loaded.
 
-  """Iternal get function for fetching properties
+        If this Model has already been loaded (model.loaded == True), then the 
+        optional named parameter "override" is required to reload this Model with 
+        new data otherwise an AlreadyLoadedError will be raised.
+        
+        """ 
+        if self.loaded and not override:
+            raise AlreadyLoadedError("This model has already been loaded "
+                                     "from the database")
+        document = self._collection.find_one(query)
+        if document is not None:
+            self._data = document
+            self.loaded = True
+            self.new = False
+        return self.loaded
 
-  Internal use only
-  """
-  def _get_prop(self, prop):
-    if prop in self.__data__:
-      return self.__data__[prop]
-    elif hasattr(self, "__defaults__") and prop in self.__defaults__:
-      self.set(prop, self.defaults[prop])
-      return self.__data__[prop]
-    else:
-      return None
+    def save(self):
+        """Insert or Update the model based on if it's a new Model
 
-  """Get properties from this Model
+        This method will insert or update, dependiong on whether this is a new
+        model or a pre-existing model. This method will also only save if data
+        has been changed.
+        
+        """
+        if not self.modified: return
+        if self.new:
+            self._collection.insert(self._data)
+            self.new = False
+        else:
+            self._collection.update({ "_id": self.get("_id") }, self._data)
+        self.modified = False
 
-  This should be the preferred method for accessing properties to make
-  it more clear the approach. This method can take a single property to
-  fetch or multiple properties to fetch (which returns a list)
-  """
-  def get(self, *args):
-    if len(args) == 1:
-      prop = args[0]
-      return self._get_prop(prop)      
-    elif len(args) > 1:
-      ret_list = []
-      for prop in args:
-        ret_list.append(self._get_prop(prop))
-      return ret_list
-    else:
-      raise InvalidArgumentException
+    def set(self, new_props, value = None):
+        """Set properties, via a dict or prop, value, arguments
 
-  """Delete properties from the Model
+        This is the perferred method for altering Data on the Model as it plugs
+        into some higher level features like "model.modifed"
+        
+        """
+        if value is not None and type(new_props) is str: 
+            self._data[new_props] = value
+            self.modified = True
+        elif type(new_props) is dict:
+            for key in new_props:
+                self._data[key] = new_props[key]
+                self.modified = True
+        else:
+            raise InvalidArgumentError("set expects new_props to be a string "
+                                       "or dict")
 
-  This will permanently remove properties and their values from the
-  Model as well as mark it as modified.
-  """
-  def remove(self, *args):
-    for prop in args:
-      if prop in self.__data__:
-        del self.__data__[prop]
-        self.modified = True
+    def _get_prop(self, prop):
+        """Iternal get function for fetching properties"""
+        if prop in self._data:
+            return self._data[prop]
+        elif hasattr(self, "_defaults") and prop in self._defaults:
+            self.set(prop, self._defaults[prop])
+            return self._data[prop]
+        else:
+            return None
 
-class InvalidArgumentException(Exception):
-  pass
+    def get(self, *args):
+        """Get properties from this Model
 
-class AlreadyLoadedException(Exception):
-  pass
+        This should be the preferred method for accessing properties to make
+        it more clear the approach. This method can take a single property to
+        fetch or multiple properties to fetch (which returns a list)
+        
+        """
+        if len(args) == 1:
+            prop = args[0]
+            return self._get_prop(prop)      
+        elif len(args) > 1:
+            ret_list = []
+            for prop in args:
+              ret_list.append(self._get_prop(prop))
+            return ret_list
+        else:
+            raise InvalidArgumentError("get required at least one argument"
+                                           "to fetch a property") 
+
+    def remove(self, *args):
+        """Delete properties from the Model
+
+        This will permanently remove properties and their values from the
+        Model as well as mark it as modified.
+        
+        """
+        for prop in args:
+            if prop in self._data:
+                del self._data[prop]
+                self.modified = True
+
+class InvalidArgumentError(Exception):
+    """Invalid Arguments Passed to a function"""
+
+class AlreadyLoadedError(Exception):
+    """Model has already been loaded and override=True was not given"""
