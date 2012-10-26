@@ -8,8 +8,8 @@ class Model(object):
   for the model. The model __init__ accepts a named collection and db parameters
   to specify where the data is stored in the database.
   """
-  def __init__(self, data = {}, collection = "trashbin", db = "test"):
-    self.__conn__ = pymongo.Connection("mongodb://localhost")
+  def __init__(self, data = {}, collection = "trashbin", db = "test", host = "localhost", safe_conn = False):
+    self.__conn__ = pymongo.Connection("mongodb://%s" % host, safe = safe_conn)
     self.__db__ = self.__conn__[db]
     self.__collection__ = self.__db__[collection]
     self.new = True
