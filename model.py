@@ -72,14 +72,14 @@ class BasicModel(object):
             self._collection.update({ "_id": self.get("_id") }, self._data)
         self.modified = False
 
-    def set(self, new_props, value = None):
+    def set(self, new_props, value=None):
         """Set properties, via a dict or prop, value, arguments
 
         This is the perferred method for altering Data on the Model as it plugs
         into some higher level features like "model.modifed"
         
         """
-        if value is not None and type(new_props) is str: 
+        if type(new_props) is str: 
             self._data[new_props] = value
             self.modified = True
         elif type(new_props) is dict:
